@@ -1,0 +1,27 @@
+{
+  "name": "hcelo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vue-tsc -b && vite build",
+    "test": "node scripts/handicap-check.mjs",
+    "lint": "eslint .",
+    "test:unit": "vitest run"
+  },
+  "dependencies": {
+    "@vitejs/plugin-vue": "latest",
+    "vite": "latest",
+    "vue": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "@vue/eslint-config-typescript": "latest",
+    "eslint": "latest",
+    "eslint-plugin-vue": "latest",
+    "typescript": "latest",
+    "vitest": "latest",
+    "vue-tsc": "latest"
+  }
+}

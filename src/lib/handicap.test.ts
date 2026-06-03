@@ -7,13 +7,20 @@ describe('Elo handicap calculations', () => {
     expect(expectedOutcome(1600, 1500)).toBeCloseTo(0.64006, 5);
   });
 
-  it('updates both ratings symmetrically with K=20', () => {
+  it('updates both ratings symmetrically with K=20 by default', () => {
     const result = calculateElo(1500, 1500, 'A');
 
     expect(result.newRatingA).toBe(1510);
     expect(result.newRatingB).toBe(1490);
     expect(result.deltaA).toBe(10);
     expect(result.deltaB).toBe(-10);
+  });
+
+  it('supports an editable K factor', () => {
+    const result = calculateElo(1500, 1500, 'A', 10);
+
+    expect(result.newRatingA).toBe(1505);
+    expect(result.newRatingB).toBe(1495);
   });
 
   it('rewards upsets more than expected wins', () => {

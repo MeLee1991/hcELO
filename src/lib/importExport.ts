@@ -116,13 +116,13 @@ export function matchExportCsv(matches: MatchLog[], playerName: (id: string) => 
   return rows.map((row) => row.map(csvEscape).join(',')).join('\n');
 }
 
-export function applyParsedMatch(players: Player[], row: ParsedMatchRow, idFactory: (prefix: string) => string): MatchLog | null {
+export function applyParsedMatch(players: Player[], row: ParsedMatchRow, idFactory: (prefix: string) => string, kFactor?: number): MatchLog | null {
   const playerA = findPlayerByName(players, row.playerAName);
   const playerB = findPlayerByName(players, row.playerBName);
   const winner = findPlayerByName(players, row.winnerName);
   if (!playerA || !playerB || !winner || (winner.id !== playerA.id && winner.id !== playerB.id)) return null;
 
-  const result = calculateElo(playerA.backgroundElo, playerB.backgroundElo, winner.id === playerA.id ? 'A' : 'B');
+  const result = calculateElo(playerA.backgroundElo, playerB.backgroundElo, winner.id === playerA.id ? 'A' : 'B', kFactor);
   const match: MatchLog = {
     id: idFactory('match'),
     playedAt: row.playedAt ? new Date(row.playedAt).toISOString() : new Date().toISOString(),

@@ -17,14 +17,14 @@ function expectedOutcome(playerRating, opponentRating) {
   return 1 / (1 + 10 ** ((opponentRating - playerRating) / 400));
 }
 
-function calculateElo(playerRatingA, playerRatingB, winner) {
+function calculateElo(playerRatingA, playerRatingB, winner, customKFactor = kFactor) {
   const expectedA = expectedOutcome(playerRatingA, playerRatingB);
   const expectedB = expectedOutcome(playerRatingB, playerRatingA);
   const scoreA = winner === 'A' ? 1 : 0;
   const scoreB = winner === 'B' ? 1 : 0;
   return {
-    newRatingA: Math.round((playerRatingA + kFactor * (scoreA - expectedA)) * 100) / 100,
-    newRatingB: Math.round((playerRatingB + kFactor * (scoreB - expectedB)) * 100) / 100,
+    newRatingA: Math.round((playerRatingA + customKFactor * (scoreA - expectedA)) * 100) / 100,
+    newRatingB: Math.round((playerRatingB + customKFactor * (scoreB - expectedB)) * 100) / 100,
   };
 }
 
@@ -52,6 +52,7 @@ function evaluateMonthlyTier(currentTierName, rating) {
 assert.equal(expectedOutcome(1500, 1500), 0.5);
 assert.equal(calculateElo(1500, 1500, 'A').newRatingA, 1510);
 assert.equal(calculateElo(1500, 1500, 'A').newRatingB, 1490);
+assert.equal(calculateElo(1500, 1500, 'A', 10).newRatingA, 1505);
 assert.equal(evaluateMonthlyTier('A3', 1599.99), 'A3');
 assert.equal(evaluateMonthlyTier('A3', 1600), 'A2');
 assert.equal(evaluateMonthlyTier('A2', 1550), 'A2');

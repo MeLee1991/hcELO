@@ -103,3 +103,20 @@ th { color: #64748b; font-size: 0.8rem; text-transform: uppercase; letter-spacin
   .hero, .two { grid-template-columns: 1fr; }
   .metric-grid, .form-grid { grid-template-columns: 1fr; }
 }
+
+.spreadsheet-card { margin-bottom: 24px; overflow-x: auto; }
+.sheet-toolbar { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(260px, 1fr) 170px 120px; gap: 14px; align-items: end; }
+.eyebrow.dark { color: #245b93; margin: 0 0 6px; }
+.file-drop { border: 1px dashed #94a3b8; border-radius: 16px; padding: 12px; background: #f8fafc; }
+.file-drop input { margin: 8px 0; }
+.file-drop span { display: block; color: #64748b; font-weight: 500; font-size: 0.85rem; }
+.actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.empty-state { border: 1px dashed #94a3b8; border-radius: 16px; padding: 24px; background: #f8fafc; }
+.sheet-table { min-width: 1180px; }
+.sheet-table input, .sheet-table select { min-width: 92px; padding: 8px; }
+.sheet-table td:nth-child(2) input { min-width: 220px; }
+.stat-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 16px 0; }
+.stat-row div { border: 1px solid #dbe4ee; border-radius: 14px; padding: 12px; background: #f8fafc; }
+.stat-row strong { display: block; font-size: 1.5rem; color: #0d2745; }
+.stat-row span { color: #64748b; }
+@media (max-width: 980px) { .sheet-toolbar { grid-template-columns: 1fr; } .stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

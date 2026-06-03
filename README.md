@@ -6,6 +6,7 @@ A Vue web app and Supabase/PostgreSQL schema for managing billiards tournament p
 
 - A frontend web app in `src/App.vue` that you can run locally in a browser.
 - Handicap/Elo business logic in `src/lib/handicap.ts`.
+- Import/export utilities in `src/lib/importExport.ts` for CS-235 CSV files.
 - Supabase/PostgreSQL production database setup in `supabase/migrations/001_initial_schema.sql`.
 - A quick smoke test in `scripts/handicap-check.mjs`.
 
@@ -217,9 +218,9 @@ Open VS Code manually and use **File → Open Folder** instead.
 
 ## Data source notes
 
-The original scaffold used fake demo player names only because the CueScore handicap dashboard can require an authenticated dashboard session. The current seed data in `src/lib/seed.ts` now comes from the HC rankings manually provided by MeLee1991 on 2026-06-03.
+The app no longer seeds any built-in player names or matches. The previous placeholder/demo names have been removed. Upload your real CSV exports named like `CS-235 - ... .csv` from the project root using the first-page file picker.
 
-For games, the app supports three practical import paths:
+For games and tournaments, the app supports three practical import paths:
 
 1. Paste a CueScore tournament URL into the match import box so the app can try to fetch it.
 2. If the browser blocks CueScore because of CORS/login/session rules, copy or export the match table and paste CSV/TSV rows in this format:
@@ -229,9 +230,9 @@ Date,Club,Tournament,Player A,Player B,Winner,Score A,Score B,URL
 2026-06-02,Kaval,KAVAL HC Torek 02.06.2026,Adnan Bašić,Rok Količ,Rok Količ,0,1,https://cuescore.com/tournament/KAVAL+HC+Torek+02.06.2026/82399141
 ```
 
-3. Export your Google Sheet to CSV and paste/import those rows. The shared sheet is intended as the master source for matches, tournaments, and miniHC values.
+3. Export your Google Sheet tabs to CSV and upload/paste those rows. The shared sheet is intended as the master source for matches, tournaments, current HC, and miniHC values.
 
-Handicap rows are editable in the UI. The `miniHC` column is also editable and acts as the minimum allowed handicap tier during monthly processing. If Elo suggests a lower tier than miniHC allows, the app logs a miniHC warning and keeps the player at the minimum tier.
+Handicap rows are editable directly on the first screen: name, HC, miniHC, Elo, points, and the Elo K factor can all be changed. The `miniHC` column acts as the minimum allowed handicap tier during monthly processing. If Elo suggests a lower tier than miniHC allows, the app logs a miniHC warning and keeps the player at the minimum tier.
 
 ## Supabase setup
 
@@ -239,9 +240,9 @@ Apply `supabase/migrations/001_initial_schema.sql` to a Supabase project with `p
 
 ## CueScore rankings
 
-The provided CueScore dashboard URL appears to require a valid dashboard session in many contexts. Export or copy the active ranking list and paste it into the import box as CSV rows:
+The provided CueScore dashboard URL appears to require a valid dashboard session in many contexts. Export or copy the active ranking list and upload/paste it as CSV rows. Preferred current-HC format:
 
 ```csv
-Jane Player,A3,1512,70
-John Player,B1,1390,0
+Name,Handicap,Minimum HC,Elo,Points
+Example Player,A3,A3,1500,0
 ```

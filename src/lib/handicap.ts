@@ -36,13 +36,13 @@ export function expectedOutcome(playerRating: number, opponentRating: number) {
   return 1 / (1 + 10 ** ((opponentRating - playerRating) / 400));
 }
 
-export function calculateElo(playerRatingA: number, playerRatingB: number, winner: 'A' | 'B'): EloResult {
+export function calculateElo(playerRatingA: number, playerRatingB: number, winner: 'A' | 'B', kFactor = K_FACTOR): EloResult {
   const expectedA = expectedOutcome(playerRatingA, playerRatingB);
   const expectedB = expectedOutcome(playerRatingB, playerRatingA);
   const scoreA = winner === 'A' ? 1 : 0;
   const scoreB = winner === 'B' ? 1 : 0;
-  const deltaA = K_FACTOR * (scoreA - expectedA);
-  const deltaB = K_FACTOR * (scoreB - expectedB);
+  const deltaA = kFactor * (scoreA - expectedA);
+  const deltaB = kFactor * (scoreB - expectedB);
 
   return {
     expectedA,

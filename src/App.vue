@@ -6,12 +6,14 @@ import {
   evaluateMonthlyTier,
   expectedOutcome,
   HANDICAP_TIERS,
+  K_FACTOR,
   tierForInitialElo,
   tournamentPointsForPlacement,
   type TierName,
 } from './lib/handicap';
 import {
   applyParsedMatch,
+  findPlayerByName,
   matchExportCsv,
   normalizeTier,
   parseMatchRows,
@@ -22,7 +24,7 @@ import {
 import { seedPlayers } from './lib/seed';
 import type { MatchLog, Player, TierChangeLog } from './lib/types';
 
-const storageKey = 'hcelo-state-v2';
+const storageKey = 'hcelo-state-v3';
 const defaultGoogleSheetUrl = 'https://docs.google.com/spreadsheets/d/162XyMOkN6GT8NkU-skuEVSnJDN_HYOLx4E1FpV-RatI/edit?usp=sharing';
 const defaultCueScoreHandicapUrl = 'https://cuescore.com/dashboard/biljardnazvezaslovenije/handicaps?handicapId=64255726';
 
@@ -30,6 +32,9 @@ interface AppState {
   players: Player[];
   matches: MatchLog[];
   tierChanges: TierChangeLog[];
+  settings: {
+    kFactor: number;
+  };
 }
 
 type PeriodFilter = 'currentMonth' | 'lastTwoMonths' | 'season' | 'all' | 'custom';
@@ -43,6 +48,7 @@ function defaultState(): AppState {
     players: structuredClone(seedPlayers),
     matches: [],
     tierChanges: [],
+    settings: { kFactor: K_FACTOR },
   };
 }
 
@@ -56,6 +62,7 @@ function migrateState(value: Partial<AppState>): AppState {
     })),
     matches: value.matches ?? [],
     tierChanges: value.tierChanges ?? [],
+    settings: { kFactor: value.settings?.kFactor ?? K_FACTOR },
   };
 }
 
@@ -91,6 +98,7 @@ const statsClub = ref('all');
 const customStart = ref(new Date(new Date().getFullYear(), 0, 1).toISOString().slice(0, 10));
 const customEnd = ref(new Date().toISOString().slice(0, 10));
 const improvementLimit = ref(20);
+const selectedFileNames = ref('No CSV files selected yet.');
 
 const sortedPlayers = computed(() =>
   [...state.players].sort((a, b) => b.backgroundElo - a.backgroundElo || b.tournamentPoints - a.tournamentPoints),
@@ -211,7 +219,12 @@ function recordMatch(extra: Partial<MatchLog> = {}) {
   if (!playerA || !playerB || playerA.id === playerB.id) return;
 
   const actualWinnerId = winnerId.value === playerB.id ? playerB.id : playerA.id;
-  const result = calculateElo(playerA.backgroundElo, playerB.backgroundElo, actualWinnerId === playerA.id ? 'A' : 'B');
+  const result = calculateElo(
+    playerA.backgroundElo,
+    playerB.backgroundElo,
+    actualWinnerId === playerA.id ? 'A' : 'B',
+    state.settings.kFactor,
+  );
   const match: MatchLog = {
     id: makeId('match'),
     playedAt: new Date().toISOString(),
@@ -334,13 +347,16 @@ function importMatches() {
   const parsed = parseMatchRows(matchImportText.value, matchImportUrl.value.trim());
   let imported = 0;
   parsed.forEach((row) => {
-    const match = applyParsedMatch(state.players, row, makeId);
+    ensurePlayer(row.playerAName);
+    ensurePlayer(row.playerBName);
+    ensurePlayer(row.winnerName);
+    const match = applyParsedMatch(state.players, row, makeId, state.settings.kFactor);
     if (match) {
       state.matches.unshift(match);
       imported += 1;
     }
   });
-  importStatus.value = `${imported}/${parsed.length} matches imported. Rows with unknown names were skipped.`;
+  importStatus.value = `${imported}/${parsed.length} matches imported. Missing players were auto-created as B- so you can set their real HC/miniHC.`;
   matchImportText.value = '';
   persist();
 }
@@ -357,6 +373,59 @@ async function fetchMatchUrl() {
   } catch (error) {
     importStatus.value = `Could not fetch that URL from the browser (${error instanceof Error ? error.message : 'blocked'}). Paste CSV/TSV rows instead.`;
   }
+}
+
+function ensurePlayer(name: string) {
+  const cleanName = name.trim();
+  if (!cleanName) return null;
+  const existing = findPlayerByName(state.players, cleanName);
+  if (existing) return existing;
+  const player: Player = {
+    id: makeId('player'),
+    name: cleanName,
+    visibleTier: 'B-',
+    sourceHandicap: 'B-',
+    minimumTier: 'B-',
+    backgroundElo: 1100,
+    tournamentPoints: 0,
+    notes: 'Auto-created from imported games; set correct HC/miniHC manually.',
+  };
+  state.players.push(player);
+  return player;
+}
+
+async function importCsvFiles(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const files = [...(input.files ?? [])];
+  if (!files.length) return;
+  selectedFileNames.value = files.map((file) => file.name).join(', ');
+
+  const readFiles = await Promise.all(
+    files.map(async (file) => ({ name: file.name, text: await file.text() })),
+  );
+  let playerFiles = 0;
+  let matchFiles = 0;
+
+  readFiles
+    .filter((file) => /hc|handicap|rank|mini/i.test(file.name))
+    .forEach((file) => {
+      csvImport.value = file.text;
+      importCsv();
+      playerFiles += 1;
+    });
+
+  readFiles
+    .filter((file) => !/hc|handicap|rank|mini/i.test(file.name))
+    .forEach((file) => {
+      matchImportUrl.value = file.name;
+      matchImportText.value = file.text;
+      importMatches();
+      matchFiles += 1;
+    });
+
+  importStatus.value = `Loaded ${playerFiles} player/HC file(s) and ${matchFiles} game/tournament file(s).`;
+  input.value = '';
+  persist();
 }
 
 function playerName(id: string) {
@@ -394,10 +463,10 @@ function resetToCurrentRankings() {
     <section class="hero card">
       <div>
         <p class="eyebrow">Billiards Tournament & Handicap Tracker</p>
-        <h1>Editable HC rankings, match imports, and player statistics.</h1>
+        <h1>Editable HC spreadsheet, tournament imports, and player statistics.</h1>
         <p>
-          The initial rankings now use the HC list you provided manually from CueScore. The old names were
-          only placeholder demo data because the CueScore dashboard may require an authenticated session.
+          No player names or matches are invented in the app anymore. Upload your real <strong>CS-235 - ...</strong>
+          CSV files, then edit names, HC, miniHC, Elo, points, and K directly from the first screen.
         </p>
       </div>
       <div class="metric-grid">
@@ -405,6 +474,53 @@ function resetToCurrentRankings() {
         <div><strong>{{ state.matches.length }}</strong><span>Matches logged</span></div>
         <div><strong>{{ clubs.length || 'All' }}</strong><span>Clubs</span></div>
       </div>
+    </section>
+
+
+
+    <section class="card spreadsheet-card">
+      <div class="sheet-toolbar">
+        <div>
+          <p class="eyebrow dark">CS-235 control sheet</p>
+          <h2>Current handicaps / rankings</h2>
+          <p class="hint">Upload the real CSV files from the project root. HC/ranking/mini files are loaded first; game/tournament files are imported after that.</p>
+        </div>
+        <label class="file-drop">
+          Upload CS-235 CSV files
+          <input type="file" multiple accept=".csv,.tsv,.txt" @change="importCsvFiles" />
+          <span>{{ selectedFileNames }}</span>
+        </label>
+        <label>T1 period
+          <select v-model="statsPeriod">
+            <option value="currentMonth">This month</option>
+            <option value="lastTwoMonths">Last two months</option>
+            <option value="season">Season / year</option>
+            <option value="all">All</option>
+            <option value="custom">Custom</option>
+          </select>
+        </label>
+        <label>K factor
+          <input v-model.number="state.settings.kFactor" type="number" min="1" step="1" @change="persist" />
+        </label>
+      </div>
+      <div class="actions"><button class="secondary" @click="exportPlayers">Export HC CSV</button><button class="secondary" @click="exportMatches">Export games CSV</button><button class="link" @click="resetToCurrentRankings">Clear local data</button></div>
+      <p v-if="!state.players.length" class="empty-state">No players loaded yet. Choose your <strong>CS-235 - current handicap</strong> / <strong>CS-235 - miniHC</strong> CSV files above.</p>
+      <table v-else class="sheet-table">
+        <thead><tr><th>A rank</th><th>B editable name</th><th>C HC</th><th>D miniHC</th><th>E Elo</th><th>F points</th><th>O current rank</th><th>T selected-period games</th><th>W-L</th></tr></thead>
+        <tbody>
+          <tr v-for="(player, index) in sortedPlayers" :key="player.id">
+            <td>{{ index + 1 }}</td>
+            <td><input v-model="player.name" @change="persist" /></td>
+            <td><select v-model="player.visibleTier" @change="persist"><option v-for="tier in HANDICAP_TIERS" :key="tier.name" :value="tier.name">{{ tier.name }}</option></select></td>
+            <td><select v-model="player.minimumTier" @change="persist"><option v-for="tier in HANDICAP_TIERS" :key="tier.name" :value="tier.name">{{ tier.name }}</option></select></td>
+            <td><input v-model.number="player.backgroundElo" type="number" step="0.01" @change="persist" /></td>
+            <td><input v-model.number="player.tournamentPoints" type="number" @change="persist" /></td>
+            <td><span class="pill">{{ player.visibleTier }}</span></td>
+            <td>{{ filteredMatches.filter((match) => match.playerAId === player.id || match.playerBId === player.id).length }}</td>
+            <td>{{ filteredMatches.filter((match) => match.winnerId === player.id).length }}-{{ filteredMatches.filter((match) => (match.playerAId === player.id || match.playerBId === player.id) && match.winnerId !== player.id).length }}</td>
+          </tr>
+        </tbody>
+      </table>
     </section>
 
     <section class="grid two">
@@ -440,7 +556,7 @@ function resetToCurrentRankings() {
     <section class="grid two">
       <div class="card">
         <h2>Editable players, HC, and miniHC</h2>
-        <div class="actions"><button class="secondary" @click="exportPlayers">Export current HC CSV</button><button class="link" @click="resetToCurrentRankings">Reset to provided HC list</button></div>
+        <div class="actions"><button class="secondary" @click="exportPlayers">Export current HC CSV</button><button class="link" @click="resetToCurrentRankings">Clear local data</button></div>
         <table>
           <thead><tr><th>Rank</th><th>Player</th><th>HC</th><th>miniHC</th><th>Elo</th><th>Points</th></tr></thead>
           <tbody>

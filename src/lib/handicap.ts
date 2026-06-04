@@ -1,4 +1,11 @@
-export const K_FACTOR = 20;
+let K_FACTOR = 20;
+export function setKFactor(k: number) {
+  K_FACTOR = Math.max(1, Number(k) || 1);
+}
+
+export function getKFactor() {
+  return K_FACTOR;
+}
 export const DEMOTION_BUFFER = 50;
 
 export const HANDICAP_TIERS = [
@@ -11,6 +18,7 @@ export const HANDICAP_TIERS = [
   { name: 'B2', baselineElo: 1300 },
   { name: 'B3', baselineElo: 1200 },
   { name: 'B-', baselineElo: 1100 },
+  { name: 'C+', baselineElo: 1000 },
 ] as const;
 
 export type TierName = (typeof HANDICAP_TIERS)[number]['name'];
@@ -41,8 +49,8 @@ export function calculateElo(playerRatingA: number, playerRatingB: number, winne
   const expectedB = expectedOutcome(playerRatingB, playerRatingA);
   const scoreA = winner === 'A' ? 1 : 0;
   const scoreB = winner === 'B' ? 1 : 0;
-  const deltaA = K_FACTOR * (scoreA - expectedA);
-  const deltaB = K_FACTOR * (scoreB - expectedB);
+  const deltaA = getKFactor() * (scoreA - expectedA);
+  const deltaB = getKFactor() * (scoreB - expectedB);
 
   return {
     expectedA,

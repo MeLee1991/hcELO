@@ -1,6 +1,13 @@
 import express from 'express';
 import cors from 'cors';
 
+//jest
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+//end jest
+
 const app = express();
 const PORT = process.env.PORT || 5175;
 
@@ -144,6 +151,21 @@ app.post('/api/fetchTournament', async (req, res) => {
 
 app.get('/health', (req, res) => res.send('ok'));
 
-app.listen(PORT, () => {
-  console.log(`CueScore proxy listening on http://localhost:${PORT}`);
+//app.listen(PORT, () => {
+//  console.log(`CueScore proxy listening on http://localhost:${PORT}`);
+//});
+// comentiru zarad tega spodi
+
+
+//spet jest
+// ADD THESE LINES at the end of your proxy.mjs:
+// 1. Serve static files from the build output
+app.use(express.static(path.join(__dirname, '../dist')));
+
+// 2. Catch-all route to serve the SPA (for React/Vue router)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../dist/index.html'));
 });
+
+app.listen(process.env.PORT || 3000);
+//jest end

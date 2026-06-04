@@ -1,6 +1,6 @@
 import type { CueScoreGame, Tournament } from './types';
 
-const PROXY_URL = 'http://localhost:5175/api/fetchTournament';
+const PROXY_URL = '/api/fetchTournament';
 
 export function extractTournamentId(url: string): string | null {
   const match = url.match(/\/(\d+)\/?$/);
@@ -64,7 +64,7 @@ export async function fetchMultipleTournaments(urls: string[]): Promise<{ tourna
 
 export async function fetchHandicapList(handicapId: number): Promise<any[] | null> {
   try {
-    const response = await fetch('http://localhost:5175/api/fetchHandicap', { // Adjust if your proxy endpoint name differs
+    const response = await fetch('/api/fetchHandicap', { // Adjust if your proxy endpoint name differs
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: handicapId }),
